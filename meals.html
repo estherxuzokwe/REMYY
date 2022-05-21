@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="./main.css" rel="stylesheet">
+  <link href="./animations.css" rel="stylesheet">
+  <title>Remy</title>
+</head>
+
+<body class="bg-gray-50">
+  <div id="vue-app">
+    <div class="flex flex-col lg:flex-row w-screen h-screen" v-bind:class="{
+      'blur-sm': isModalOpen
+    }">
+      <!-- Ingredient picker -->
+      <div class="bg-white lg:h-full lg:w-3/12 py-10 px-6">
+        <div class="font-2xl font-medium text-gray-400 uppercase tracking-wide">Vegetables</div>
+
+        <!-- Ingredient search field -->
+        <input v-model="ingredientSearch" type="text" class="mt-4 px-3 py-2 bg-gray-50 rounded-md"
+          placeholder="Search..." />
+
+        <div class="grid grid-cols-2 mt-4 gap-y-6">
+          <div v-for="(ingredient, index) in ingredients">
+            <button @click="selectIngredient(index)" class="flex flex-col items-center w-full">
+              <img class="w-28 h-28 object-cover rounded-full border-4 select-none"
+                :src="`./resources/ingredients/${ingredient.imageName}`" v-bind:class="{
+                  'border-gray-300': index !== selectedIngredientIndex,
+                  'border-blue-500': index === selectedIngredientIndex,
+                }" />
+              <div class="mt-2" v-bind:class="{
+                'text-blue-500': index === selectedIngredientIndex,
+                'font-semibold': index === selectedIngredientIndex,
+              }">{{ ingredient.name }}</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dish selection -->
+      <transition name="slide-fade">
+        <div v-if="selectedIngredient" class="bg-transparent lg:h-full lg:w-4/12 py-10 px-6">
+          <div class="font-2xl font-medium text-gray-400 uppercase tracking-wide">{{ selectedIngredient.name }} Dishes</div>
+          <div v-for="dish in availableDishes" class="flex-col mt-10 space-y-6">
+            <button @click="selectDish(dish)" class="pl-2">
+              {{dish.name}}
+            </button>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Meal detail view -->
+      <transition name="slide-fade">
+        <div v-if="selectedDish" class="bg-white lg:h-full lg:w-5/12 py-10 px-6">
+          <div v-on:dragstart="dragStarted" draggable="true"
+            class="font-2xl font-medium text-gray-400 uppercase tracking-wide">{{selectedDish.name}}</div>
+          <div class="mt-10 font-bold">
+            Ingredients
+          </div>
+          <div class="text-gray-600">
+            <ul v-for="ingredient in selectedDish.ingredients">
+              <li>• {{ingredient}}</li>
+            </ul>
+          </div>
+          <div class="mt-10 font-bold">
+            Method
+          </div>
+          <div class="ml-4 text-gray-600">
+            <ol class="list-decimal">
+              <li v-for="step in selectedDish.method">{{step}}</li>
+            </ol>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Black box that stores dropped meals -->
+      <div id="droparea" ondrop="handleDrop(event)" ondragover="handleDropOver(event)"
+        class="hidden lg:block absolute bottom-10 right-10 w-56 h-56 bg-gray-900 rounded-md transform"
+        v-bind:class="{
+          'w-[300pt]': isDropAreaMaximised,
+          'h-[300pt]': isDropAreaMaximised,
+        }">
+        
+        <div class="flex flex-col items-end">
+          <button class="text-blue-200 mt-2 mr-2" @click="isDropAreaMaximised = !isDropAreaMaximised">
+            <!-- Expand/contract arrows -->
+            <div v-if="isDropAreaMaximised">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>             
+            </div>
+            <div v-else>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </div>
+          </button>
+          <!-- Saved meals -->
+          <div class="w-full">
+            <div v-for="dish in savedDishes" class="text-gray-100 mx-4">
+              <div>{{dish}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dietary restrictions modal -->
+    <div v-if="isModalOpen" class="absolute top-0 left-0 w-screen h-screen">
+      <div class="w-full h-full flex items-center justify-center">
+        <div class="w-80 h-80 bg-gray-200 rounded-lg shadow-lg">
+          <div class="m-6">
+            <div class="flex">
+              <div class="text-xl font-semibold text-gray-900">Dietary Requirements</div>
+              <div class="flex-grow"></div>
+              <button class="text-gray-400" @click="isModalOpen = false">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div class="mt-4">
+              <input type="checkbox" id="vegetarian-checkbox" v-model="restrictions.isVegetarian">
+              <label for="vegetarian-checkbox">I'm a vegetarian</label>
+            </div>
+            <div>
+              <input type="checkbox" id="vegan-checkbox" v-model="restrictions.isVegan">
+              <label for="vegetarian-checkbox">I'm a vegan</label>
+            </div>
+            <div>
+              <input type="checkbox" id="allergy-checkbox" v-model="restrictions.hasNutAllergy">
+              <label for="allergy-checkbox">I have a nut allergy</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VueJS -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <!-- Application Javascript -->
+  <script src="./index.js"></script>
+</body>
+
+</html>
